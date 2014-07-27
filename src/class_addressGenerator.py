@@ -29,8 +29,8 @@ class addressGenerator(threading.Thread):
             elif queueValue[0] == 'joinChan':
                 command, chanAddress, label, deterministicPassphrase = queueValue
                 eighteenByteRipe = False
-                addressVersionNumber = decodeAddress(chanAddress)[1]
-                streamNumber = decodeAddress(chanAddress)[2]
+                addressVersionNumber = decode_address(chanAddress)[1]
+                streamNumber = decode_address(chanAddress)[2]
                 numberOfAddressesToMake = 1
                 numberOfNullBytesDemandedOnFrontOfRipeHash = 1
             elif len(queueValue) == 7:
@@ -99,7 +99,7 @@ class addressGenerator(threading.Thread):
                         break
                 print 'Generated address with ripe digest:', ripe.digest().encode('hex')
                 print 'Address generator calculated', numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix, 'addresses at', numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix / (time.time() - startTime), 'addresses per second before finding one with the correct ripe-prefix.'
-                address = encodeAddress(addressVersionNumber, streamNumber, ripe.digest())
+                address = encode_address(addressVersionNumber, streamNumber, ripe.digest())
 
                 # An excellent way for us to store our keys is in Wallet Import Format. Let us convert now.
                 # https://en.bitcoin.it/wiki/Wallet_import_format
@@ -172,9 +172,9 @@ class addressGenerator(threading.Thread):
                     while True:
                         numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix += 1
                         potentialPrivSigningKey = hashlib.sha512(
-                            deterministicPassphrase + encodeVarint(signingKeyNonce)).digest()[:32]
+                            deterministicPassphrase + encode_varint(signingKeyNonce)).digest()[:32]
                         potentialPrivEncryptionKey = hashlib.sha512(
-                            deterministicPassphrase + encodeVarint(encryptionKeyNonce)).digest()[:32]
+                            deterministicPassphrase + encode_varint(encryptionKeyNonce)).digest()[:32]
                         potentialPubSigningKey = highlevelcrypto.pointMult(
                             potentialPrivSigningKey)
                         potentialPubEncryptionKey = highlevelcrypto.pointMult(
@@ -196,7 +196,7 @@ class addressGenerator(threading.Thread):
 
                     print 'ripe.digest', ripe.digest().encode('hex')
                     print 'Address generator calculated', numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix, 'addresses at', numberOfAddressesWeHadToMakeBeforeWeFoundOneWithTheCorrectRipePrefix / (time.time() - startTime), 'keys per second.'
-                    address = encodeAddress(addressVersionNumber, streamNumber, ripe.digest())
+                    address = encode_address(addressVersionNumber, streamNumber, ripe.digest())
 
                     saveAddressToDisk = True
                     # If we are joining an existing chan, let us check to make sure it matches the provided Bitmessage address
@@ -254,8 +254,8 @@ class addressGenerator(threading.Thread):
                             shared.myECCryptorObjects[ripe.digest()] = highlevelcrypto.makeCryptor(
                                 potentialPrivEncryptionKey.encode('hex'))
                             shared.myAddressesByHash[ripe.digest()] = address
-                            tag = hashlib.sha512(hashlib.sha512(encodeVarint(
-                                addressVersionNumber) + encodeVarint(streamNumber) + ripe.digest()).digest()).digest()[32:]
+                            tag = hashlib.sha512(hashlib.sha512(encode_varint(
+                                addressVersionNumber) + encode_varint(streamNumber) + ripe.digest()).digest()).digest()[32:]
                             shared.myAddressesByTag[tag] = address
                             if addressVersionNumber == 3:
                                 shared.workerQueue.put((

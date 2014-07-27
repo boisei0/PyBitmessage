@@ -11,7 +11,7 @@ print 'Let\'s test the API first.'
 inputstr1 = "hello"
 inputstr2 = "world"
 print api.helloWorld(inputstr1, inputstr2)
-print api.add(2,3)
+print api.add(2, 3)
 
 print 'Let\'s set the status bar message.'
 print api.statusBar("new status bar message")

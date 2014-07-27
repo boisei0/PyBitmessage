@@ -17,7 +17,7 @@ import json
 
 import shared
 import time
-from addresses import decodeAddress,addBMIfNotPresent,decodeVarint,calculateInventoryHash
+from addresses import decode_address,add_bm_if_not_present,decode_varint,calculate_inventory_hash
 import helper_inbox
 import helper_sent
 import hashlib
@@ -129,7 +129,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             raise APIError(22, "Decode error - " + str(e) + ". Had trouble while decoding string: " + repr(text))
 
     def _verifyAddress(self, address):
-        status, addressVersionNumber, streamNumber, ripe = decodeAddress(address)
+        status, addressVersionNumber, streamNumber, ripe = decode_address(address)
         if status != 'success':
             logger.warn('API Error 0007: Could not decode address %s. Status: %s.', address, status)
 
@@ -162,7 +162,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             configSections = shared.config.sections()
             for addressInKeysFile in configSections:
                 if addressInKeysFile != 'bitmessagesettings':
-                    status, addressVersionNumber, streamNumber, hash01 = decodeAddress(
+                    status, addressVersionNumber, streamNumber, hash01 = decode_address(
                         addressInKeysFile)
                     if len(data) > 20:
                         data += ','
@@ -193,7 +193,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
                 raise APIError(0, "I need label and address")
             address, label = params
             label = self._decode(label, "base64")
-            address = addBMIfNotPresent(address)
+            address = add_bm_if_not_present(address)
             self._verifyAddress(address)
             queryreturn = sqlQuery("SELECT address FROM addressbook WHERE address=?", address)
             if queryreturn != []:
@@ -208,7 +208,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             if len(params) != 1:
                 raise APIError(0, "I need an address")
             address, = params
-            address = addBMIfNotPresent(address)
+            address = add_bm_if_not_present(address)
             self._verifyAddress(address)
             sqlExecute('DELETE FROM addressbook WHERE address=?', address)
             shared.UISignalQueue.put(('rerenderInboxFromLabels',''))
@@ -405,7 +405,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
                 label = str_chan + ' ' + repr(passphrase)
 
             status, addressVersionNumber, streamNumber, toRipe = self._verifyAddress(suppliedAddress)
-            suppliedAddress = addBMIfNotPresent(suppliedAddress)
+            suppliedAddress = add_bm_if_not_present(suppliedAddress)
             shared.apiAddressGeneratorReturnQueue.queue.clear()
             shared.addressGeneratorQueue.put(('joinChan', suppliedAddress, label, passphrase))
             addressGeneratorReturnValue = shared.apiAddressGeneratorReturnQueue.get()
@@ -423,7 +423,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             elif len(params) == 1:
                 address, = params
             status, addressVersionNumber, streamNumber, toRipe = self._verifyAddress(address)
-            address = addBMIfNotPresent(address)
+            address = add_bm_if_not_present(address)
             if not shared.config.has_section(address):
                 raise APIError(13, 'Could not find this address in your keys.dat file.')
             if not shared.safeConfigGetBoolean(address, 'chan'):
@@ -439,7 +439,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             elif len(params) == 1:
                 address, = params
             status, addressVersionNumber, streamNumber, toRipe = self._verifyAddress(address)
-            address = addBMIfNotPresent(address)
+            address = add_bm_if_not_present(address)
             if not shared.config.has_section(address):
                 raise APIError(13, 'Could not find this address in your keys.dat file.')
             shared.config.remove_section(address)
@@ -621,8 +621,8 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
                 raise APIError(6, 'The encoding type must be 2 because that is the only one this program currently supports.')
             subject = self._decode(subject, "base64")
             message = self._decode(message, "base64")
-            toAddress = addBMIfNotPresent(toAddress)
-            fromAddress = addBMIfNotPresent(fromAddress)
+            toAddress = add_bm_if_not_present(toAddress)
+            fromAddress = add_bm_if_not_present(fromAddress)
             status, addressVersionNumber, streamNumber, toRipe = self._verifyAddress(toAddress)
             self._verifyAddress(fromAddress)
             try:
@@ -665,7 +665,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             subject = self._decode(subject, "base64")
             message = self._decode(message, "base64")
 
-            fromAddress = addBMIfNotPresent(fromAddress)
+            fromAddress = add_bm_if_not_present(fromAddress)
             self._verifyAddress(fromAddress)
             try:
                 fromAddressEnabled = shared.config.getboolean(
@@ -717,7 +717,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
                     raise APIError(17, 'Label is not valid UTF-8 data.')
             if len(params) > 2:
                 raise APIError(0, 'I need either 1 or 2 parameters!')
-            address = addBMIfNotPresent(address)
+            address = add_bm_if_not_present(address)
             self._verifyAddress(address)
             # First we must check to see if the address is already in the
             # subscriptions list.
@@ -734,7 +734,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             if len(params) != 1:
                 raise APIError(0, 'I need 1 parameter!')
             address, = params
-            address = addBMIfNotPresent(address)
+            address = add_bm_if_not_present(address)
             sqlExecute('''DELETE FROM subscriptions WHERE address=?''', address)
             shared.reloadBroadcastSendersForWhichImWatching()
             shared.UISignalQueue.put(('rerenderInboxFromLabels', ''))
@@ -775,8 +775,8 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
                 except:
                     pass
             encryptedPayload = pack('>Q', nonce) + encryptedPayload
-            toStreamNumber = decodeVarint(encryptedPayload[16:26])[0]
-            inventoryHash = calculateInventoryHash(encryptedPayload)
+            toStreamNumber = decode_varint(encryptedPayload[16:26])[0]
+            inventoryHash = calculate_inventory_hash(encryptedPayload)
             objectType = 'msg'
             shared.inventory[inventoryHash] = (
                 objectType, toStreamNumber, encryptedPayload, int(time.time()),'')
@@ -810,10 +810,10 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
                 pubkeyReadPosition += 8
             else:
                 pubkeyReadPosition += 4
-            addressVersion, addressVersionLength = decodeVarint(payload[pubkeyReadPosition:pubkeyReadPosition+10])
+            addressVersion, addressVersionLength = decode_varint(payload[pubkeyReadPosition:pubkeyReadPosition+10])
             pubkeyReadPosition += addressVersionLength
-            pubkeyStreamNumber = decodeVarint(payload[pubkeyReadPosition:pubkeyReadPosition+10])[0]
-            inventoryHash = calculateInventoryHash(payload)
+            pubkeyStreamNumber = decode_varint(payload[pubkeyReadPosition:pubkeyReadPosition+10])[0]
+            inventoryHash = calculate_inventory_hash(payload)
             objectType = 'pubkey'
                         #todo: support v4 pubkeys
             shared.inventory[inventoryHash] = (
@@ -844,7 +844,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
                 for row in queryreturn:
                     hash01, payload = row
                     readPosition = 16 # Nonce length + time length
-                    readPosition += decodeVarint(payload[readPosition:readPosition+10])[1] # Stream Number length
+                    readPosition += decode_varint(payload[readPosition:readPosition+10])[1] # Stream Number length
                     t = (payload[readPosition:readPosition+32],hash01)
                     sql.execute('''UPDATE inventory SET tag=? WHERE hash=?; ''', *t)
 
@@ -887,7 +887,7 @@ class MySimpleXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
             if len(params) != 1:
                 raise APIError(0, 'I need 1 parameter!')
             address, = params
-            status, addressVersion, streamNumber, ripe = decodeAddress(address)
+            status, addressVersion, streamNumber, ripe = decode_address(address)
             return json.dumps({'status':status, 'addressVersion':addressVersion,
                                'streamNumber':streamNumber, 'ripe':ripe.encode('base64')}, indent=4,
                               separators=(',', ': '))

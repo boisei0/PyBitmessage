@@ -24,7 +24,7 @@ class sendDataThread(threading.Thread):
             print 'The length of sendDataQueues at sendDataThread init is:', len(shared.sendDataQueues)
 
         self.data = ''
-        self.objectHashHolderInstance = objectHashHolder(self.sendDataThreadQueue)
+        self.objectHashHolderInstance = ObjectHashHolder(self.sendDataThreadQueue)
         self.objectHashHolderInstance.start()
         self.connectionIsOrWasFullyEstablished = False
 
@@ -90,7 +90,7 @@ class sendDataThread(threading.Thread):
                         print 'setting the remote node\'s protocol version in the sendDataThread (ID:', id(self), ') to', specifiedRemoteProtocolVersion
                     self.remoteProtocolVersion = specifiedRemoteProtocolVersion
                 elif command == 'advertisepeer':
-                    self.objectHashHolderInstance.holdPeer(data)
+                    self.objectHashHolderInstance.hold_peer(data)
                 elif command == 'sendaddr':
                     if not self.connectionIsOrWasFullyEstablished:
                         # not sending addr because we haven't sent and heard a verack from the remote node yet
@@ -108,7 +108,7 @@ class sendDataThread(threading.Thread):
                         payload += shared.encodeHost(host)
                         payload += pack('>H', port)
 
-                    payload = encodeVarint(numberOfAddressesInAddrMessage) + payload
+                    payload = encode_varint(numberOfAddressesInAddrMessage) + payload
                     packet = shared.CreatePacket('addr', payload)
                     try:
                         self.sock.sendall(packet)
@@ -117,7 +117,7 @@ class sendDataThread(threading.Thread):
                         print 'sendaddr: self.sock.sendall failed'
                         break
                 elif command == 'advertiseobject':
-                    self.objectHashHolderInstance.holdHash(data)
+                    self.objectHashHolderInstance.hold_hash(data)
                 elif command == 'sendinv':
                     if not self.connectionIsOrWasFullyEstablished:
                         # not sending inv because we haven't sent and heard a verack from the remote node yet
@@ -127,7 +127,7 @@ class sendDataThread(threading.Thread):
                         if hash not in self.someObjectsOfWhichThisRemoteNodeIsAlreadyAware:
                             payload += hash
                     if payload != '':
-                        payload = encodeVarint(len(payload)/32) + payload
+                        payload = encode_varint(len(payload)/32) + payload
                         packet = shared.CreatePacket('inv', payload)
                         try:
                             self.sock.sendall(packet)

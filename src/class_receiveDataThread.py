@@ -87,7 +87,7 @@ class receiveDataThread(threading.Thread):
         try:
             del self.selfInitiatedConnections[self.streamNumber][self]
             with shared.printLock:
-                print 'removed self (a receiveDataThread) from selfInitiatedConnections'
+                print 'removed self (a receiveDataThread) from self_initiated_connections'
         except:
             pass
         shared.broadcastToSendDataQueues((0, 'shutdown', self.peer)) # commands the corresponding sendDataThread to shut itself down.
@@ -322,7 +322,7 @@ class receiveDataThread(threading.Thread):
     # first fully established. Notice that there is also a broadcastinv 
     # function for broadcasting invs to everyone in our stream.
     def sendinvMessageToJustThisOnePeer(self, numberOfObjects, payload):
-        payload = encodeVarint(numberOfObjects) + payload
+        payload = encode_varint(numberOfObjects) + payload
         with shared.printLock:
             print 'Sending huge inv message with', numberOfObjects, 'objects to just this one peer'
         self.sendDataThreadQueue.put((0, 'sendRawData', shared.CreatePacket('inv', payload)))
@@ -415,7 +415,7 @@ class receiveDataThread(threading.Thread):
                 print 'number of keys(hosts) in shared.numberOfObjectsThatWeHaveYetToGetPerPeer:', len(shared.numberOfObjectsThatWeHaveYetToGetPerPeer)
                 print 'totalNumberOfobjectsThatWeHaveYetToGetFromAllPeers = ', totalNumberOfobjectsThatWeHaveYetToGetFromAllPeers
 
-        numberOfItemsInInv, lengthOfVarint = decodeVarint(data[:10])
+        numberOfItemsInInv, lengthOfVarint = decode_varint(data[:10])
         if numberOfItemsInInv > 50000:
             sys.stderr.write('Too many items in inv message!')
             return
@@ -469,7 +469,7 @@ class receiveDataThread(threading.Thread):
 
     # We have received a getdata request from our peer
     def recgetdata(self, data):
-        numberOfRequestedInventoryItems, lengthOfVarint = decodeVarint(
+        numberOfRequestedInventoryItems, lengthOfVarint = decode_varint(
             data[:10])
         if len(data) < lengthOfVarint + (32 * numberOfRequestedInventoryItems):
             print 'getdata message does not contain enough data. Ignoring.'
@@ -542,7 +542,7 @@ class receiveDataThread(threading.Thread):
     def recaddr(self, data):
         #listOfAddressDetailsToBroadcastToPeers = []
         numberOfAddressesIncluded = 0
-        numberOfAddressesIncluded, lengthOfNumberOfAddresses = decodeVarint(
+        numberOfAddressesIncluded, lengthOfNumberOfAddresses = decode_varint(
             data[:10])
 
         if shared.verbose >= 1:
@@ -720,7 +720,7 @@ class receiveDataThread(threading.Thread):
                 payload += shared.encodeHost(HOST)
                 payload += pack('>H', PORT)  # remote port
 
-        payload = encodeVarint(numberOfAddressesInAddrMessage) + payload
+        payload = encode_varint(numberOfAddressesInAddrMessage) + payload
         self.sendDataThreadQueue.put((0, 'sendRawData', shared.CreatePacket('addr', payload)))
 
 
@@ -749,15 +749,15 @@ class receiveDataThread(threading.Thread):
         # print 'myExternalIP', self.myExternalIP
         self.remoteNodeIncomingPort, = unpack('>H', data[70:72])
         # print 'remoteNodeIncomingPort', self.remoteNodeIncomingPort
-        useragentLength, lengthOfUseragentVarint = decodeVarint(
+        useragentLength, lengthOfUseragentVarint = decode_varint(
             data[80:84])
         readPosition = 80 + lengthOfUseragentVarint
         useragent = data[readPosition:readPosition + useragentLength]
         readPosition += useragentLength
-        numberOfStreamsInVersionMessage, lengthOfNumberOfStreamsInVersionMessage = decodeVarint(
+        numberOfStreamsInVersionMessage, lengthOfNumberOfStreamsInVersionMessage = decode_varint(
             data[readPosition:])
         readPosition += lengthOfNumberOfStreamsInVersionMessage
-        self.streamNumber, lengthOfRemoteStreamNumber = decodeVarint(
+        self.streamNumber, lengthOfRemoteStreamNumber = decode_varint(
             data[readPosition:])
         with shared.printLock:
             print 'Remote node useragent:', useragent, '  stream number:', self.streamNumber

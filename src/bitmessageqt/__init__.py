@@ -89,7 +89,7 @@ def identiconize(address):
         # Licesensed under FreeBSD License.
         # stripped from PIL and uses QT instead (by sendiulo, same license)
         import qidenticon
-        hash = hashlib.md5(addBMIfNotPresent(address)+identiconsuffix).hexdigest()
+        hash = hashlib.md5(add_bm_if_not_present(address)+identiconsuffix).hexdigest()
         use_two_colors = (identicon_lib[:len('qidenticon_two')] == 'qidenticon_two')
         opacity = int(not((identicon_lib == 'qidenticon_x') | (identicon_lib == 'qidenticon_two_x') | (identicon_lib == 'qidenticon_b') | (identicon_lib == 'qidenticon_two_b')))*255
         penwidth = 0
@@ -107,7 +107,7 @@ def identiconize(address):
         # GPLv3 is a copyleft license that would influence our licensing
         # Find the source here: http://boottunes.googlecode.com/svn-history/r302/trunk/src/pydenticon.py
         # note that it requires PIL to be installed: http://www.pythonware.com/products/pil/
-        idcon_render = Pydenticon(addBMIfNotPresent(address)+identiconsuffix, size*3)
+        idcon_render = Pydenticon(add_bm_if_not_present(address)+identiconsuffix, size*3)
         rendering = idcon_render._render()
         data = rendering.convert("RGBA").tostring("raw", "RGBA")
         qim = QImage(data, size, size, QImage.Format_ARGB32)
@@ -123,7 +123,7 @@ def avatarize(address):
         falls back to identiconize(address)
     """
     idcon = QtGui.QIcon()
-    hash = hashlib.md5(addBMIfNotPresent(address)).hexdigest()
+    hash = hashlib.md5(add_bm_if_not_present(address)).hexdigest()
     str_broadcast_subscribers = '[Broadcast subscribers]'
     if address == str_broadcast_subscribers:
         # don't hash [Broadcast subscribers]
@@ -452,7 +452,7 @@ class MyForm(QtGui.QMainWindow):
         configSections = shared.config.sections()
         for addressInKeysFile in configSections:
             if addressInKeysFile != 'bitmessagesettings':
-                status, addressVersionNumber, streamNumber, hash = decodeAddress(
+                status, addressVersionNumber, streamNumber, hash = decode_address(
                     addressInKeysFile)
                 if addressVersionNumber == 1:
                     displayMsg = _translate(
@@ -520,14 +520,14 @@ class MyForm(QtGui.QMainWindow):
                     newItem.setTextColor(QtGui.QColor(137, 04, 177)) # magenta
                 self.ui.tableWidgetYourIdentities.setItem(0, 1, newItem)
                 newItem = QtGui.QTableWidgetItem(str(
-                    decodeAddress(addressInKeysFile)[2]))
+                    decode_address(addressInKeysFile)[2]))
                 newItem.setFlags(
                     QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
                 if not isEnabled:
                     newItem.setTextColor(QtGui.QColor(128, 128, 128))
                 self.ui.tableWidgetYourIdentities.setItem(0, 2, newItem)
                 if isEnabled:
-                    status, addressVersionNumber, streamNumber, hash = decodeAddress(
+                    status, addressVersionNumber, streamNumber, hash = decode_address(
                         addressInKeysFile)
 
         # Load inbox from messages database file
@@ -1394,16 +1394,16 @@ class MyForm(QtGui.QMainWindow):
                     QMessageBox.about(self, _translate("MainWindow", "Chan name needed"), _translate(
                         "MainWindow", "You didn't enter a chan name."))
                     return
-                if decodeAddress(self.newChanDialogInstance.ui.lineEditChanBitmessageAddress.text())[0] == 'versiontoohigh':
+                if decode_address(self.newChanDialogInstance.ui.lineEditChanBitmessageAddress.text())[0] == 'versiontoohigh':
                     QMessageBox.about(self, _translate("MainWindow", "Address too new"), _translate(
                         "MainWindow", "Although that Bitmessage address might be valid, its version number is too new for us to handle. Perhaps you need to upgrade Bitmessage."))
                     return
-                if decodeAddress(self.newChanDialogInstance.ui.lineEditChanBitmessageAddress.text())[0] != 'success':
+                if decode_address(self.newChanDialogInstance.ui.lineEditChanBitmessageAddress.text())[0] != 'success':
                     QMessageBox.about(self, _translate("MainWindow", "Address invalid"), _translate(
                         "MainWindow", "That Bitmessage address is not valid."))
                     return
                 shared.apiAddressGeneratorReturnQueue.queue.clear()
-                shared.addressGeneratorQueue.put(('joinChan', addBMIfNotPresent(self.newChanDialogInstance.ui.lineEditChanBitmessageAddress.text()), self.str_chan + ' ' + str(self.newChanDialogInstance.ui.lineEditChanNameJoin.text().toUtf8()), self.newChanDialogInstance.ui.lineEditChanNameJoin.text().toUtf8()))
+                shared.addressGeneratorQueue.put(('joinChan', add_bm_if_not_present(self.newChanDialogInstance.ui.lineEditChanBitmessageAddress.text()), self.str_chan + ' ' + str(self.newChanDialogInstance.ui.lineEditChanNameJoin.text().toUtf8()), self.newChanDialogInstance.ui.lineEditChanNameJoin.text().toUtf8()))
                 addressGeneratorReturnValue = shared.apiAddressGeneratorReturnQueue.get()
                 print 'addressGeneratorReturnValue', addressGeneratorReturnValue
                 if addressGeneratorReturnValue == 'chan name does not match address':
@@ -1633,7 +1633,7 @@ class MyForm(QtGui.QMainWindow):
         for i in range(self.ui.tableWidgetSent.rowCount()):
             toAddress = str(self.ui.tableWidgetSent.item(
                 i, 0).data(Qt.UserRole).toPyObject())
-            status, addressVersionNumber, streamNumber, ripe = decodeAddress(
+            status, addressVersionNumber, streamNumber, ripe = decode_address(
                 toAddress)
             if ripe == toRipe:
                 self.ui.tableWidgetSent.item(i, 3).setToolTip(textToDisplay)
@@ -1653,7 +1653,7 @@ class MyForm(QtGui.QMainWindow):
                 i, 0).data(Qt.UserRole).toPyObject())
             tableAckdata = self.ui.tableWidgetSent.item(
                 i, 3).data(Qt.UserRole).toPyObject()
-            status, addressVersionNumber, streamNumber, ripe = decodeAddress(
+            status, addressVersionNumber, streamNumber, ripe = decode_address(
                 toAddress)
             if ackdata == tableAckdata:
                 self.ui.tableWidgetSent.item(i, 3).setToolTip(textToDisplay)
@@ -1825,7 +1825,7 @@ class MyForm(QtGui.QMainWindow):
                 toAddressesList))  # remove duplicate addresses. If the user has one address with a BM- and the same address without the BM-, this will not catch it. They'll send the message to the person twice.
             for toAddress in toAddressesList:
                 if toAddress != '':
-                    status, addressVersionNumber, streamNumber, ripe = decodeAddress(
+                    status, addressVersionNumber, streamNumber, ripe = decode_address(
                         toAddress)
                     if status != 'success':
                         with shared.printLock:
@@ -1856,7 +1856,7 @@ class MyForm(QtGui.QMainWindow):
                         self.statusBar().showMessage(_translate(
                             "MainWindow", "Error: You must specify a From address. If you don\'t have one, go to the \'Your Identities\' tab."))
                     else:
-                        toAddress = addBMIfNotPresent(toAddress)
+                        toAddress = add_bm_if_not_present(toAddress)
                         if addressVersionNumber > 4 or addressVersionNumber <= 1:
                             QMessageBox.about(self, _translate("MainWindow", "Address version number"), _translate(
                                 "MainWindow", "Concerning the address %1, Bitmessage cannot understand address version numbers of %2. Perhaps upgrade Bitmessage to the latest version.").arg(toAddress).arg(str(addressVersionNumber)))
@@ -2122,7 +2122,7 @@ class MyForm(QtGui.QMainWindow):
                 # First we must check to see if the address is already in the
                 # address book. The user cannot add it again or else it will
                 # cause problems when updating and deleting the entry.
-                address = addBMIfNotPresent(str(
+                address = add_bm_if_not_present(str(
                     self.AddAddressDialogInstance.ui.lineEditAddress.text()))
                 label = self.AddAddressDialogInstance.ui.newAddressLabel.text().toUtf8()
                 self.addEntryToAddressBook(address,label)
@@ -2151,7 +2151,7 @@ class MyForm(QtGui.QMainWindow):
                         "MainWindow", "Error: You cannot add the same address to your address book twice. Try renaming the existing one if you want."))
 
     def addSubscription(self, address, label):
-        address = addBMIfNotPresent(address)
+        address = add_bm_if_not_present(address)
         #This should be handled outside of this function, for error displaying and such, but it must also be checked here.
         if shared.isAddressInMySubscriptionsList(address):
             return
@@ -2176,7 +2176,7 @@ class MyForm(QtGui.QMainWindow):
             if self.NewSubscriptionDialogInstance.ui.labelAddressCheck.text() != _translate("MainWindow", "Address is valid."):
                 self.statusBar().showMessage(_translate("MainWindow", "The address you entered was invalid. Ignoring it."))
                 return
-            address = addBMIfNotPresent(str(self.NewSubscriptionDialogInstance.ui.lineEditSubscriptionAddress.text()))
+            address = add_bm_if_not_present(str(self.NewSubscriptionDialogInstance.ui.lineEditSubscriptionAddress.text()))
             # We must check to see if the address is already in the subscriptions list. The user cannot add it again or else it will cause problems when updating and deleting the entry.
             if shared.isAddressInMySubscriptionsList(address):
                 self.statusBar().showMessage(_translate("MainWindow", "Error: You cannot add the same address to your subsciptions twice. Perhaps rename the existing one if you want."))
@@ -2186,10 +2186,10 @@ class MyForm(QtGui.QMainWindow):
             # Now, if the user wants to display old broadcasts, let's get them out of the inventory and put them 
             # in the objectProcessorQueue to be processed
             if self.NewSubscriptionDialogInstance.ui.checkBoxDisplayMessagesAlreadyInInventory.isChecked():
-                status, addressVersion, streamNumber, ripe = decodeAddress(address)
+                status, addressVersion, streamNumber, ripe = decode_address(address)
                 shared.flushInventory()
-                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encodeVarint(
-                    addressVersion) + encodeVarint(streamNumber) + ripe).digest()).digest()
+                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encode_varint(
+                    addressVersion) + encode_varint(streamNumber) + ripe).digest()).digest()
                 tag = doubleHashOfAddressData[32:]
                 queryreturn = sqlQuery(
                     '''select payload from inventory where objecttype='broadcast' and tag=?''', tag)
@@ -2442,7 +2442,7 @@ class MyForm(QtGui.QMainWindow):
         self.NewBlacklistDialogInstance = AddAddressDialog(self)
         if self.NewBlacklistDialogInstance.exec_():
             if self.NewBlacklistDialogInstance.ui.labelAddressCheck.text() == _translate("MainWindow", "Address is valid."):
-                address = addBMIfNotPresent(str(
+                address = add_bm_if_not_present(str(
                     self.NewBlacklistDialogInstance.ui.lineEditAddress.text()))
                 # First we must check to see if the address is already in the
                 # address book. The user cannot add it again or else it will
@@ -2519,7 +2519,7 @@ class MyForm(QtGui.QMainWindow):
                 else:
                     # User selected 'Use the same stream as an existing
                     # address.'
-                    streamNumberForAddress = decodeAddress(
+                    streamNumberForAddress = decode_address(
                         self.dialog.ui.comboBoxExisting.currentText())[2]
                 shared.addressGeneratorQueue.put(('createRandomAddress', 4, streamNumberForAddress, str(
                     self.dialog.ui.newaddresslabel.text().toUtf8()), 1, "", self.dialog.ui.checkBoxEighteenByteRipe.isChecked()))
@@ -2787,7 +2787,7 @@ class MyForm(QtGui.QMainWindow):
         currentRow = self.ui.tableWidgetSent.currentRow()
         addressAtCurrentRow = str(self.ui.tableWidgetSent.item(
             currentRow, 0).data(Qt.UserRole).toPyObject())
-        toRipe = decodeAddress(addressAtCurrentRow)[3]
+        toRipe = decode_address(addressAtCurrentRow)[3]
         sqlExecute(
             '''UPDATE sent SET status='forcepow' WHERE toripe=? AND status='toodifficult' and folder='sent' ''',
             toRipe)
@@ -3064,7 +3064,7 @@ class MyForm(QtGui.QMainWindow):
         currentRow = thisTableWidget.currentRow()
         addressAtCurrentRow = thisTableWidget.item(
             currentRow, 1).text()
-        hash = hashlib.md5(addBMIfNotPresent(addressAtCurrentRow)).hexdigest()
+        hash = hashlib.md5(add_bm_if_not_present(addressAtCurrentRow)).hexdigest()
         extensions = ['PNG', 'GIF', 'JPG', 'JPEG', 'SVG', 'BMP', 'MNG', 'PBM', 'PGM', 'PPM', 'TIFF', 'XBM', 'XPM', 'TGA']
         # http://pyqt.sourceforge.net/Docs/PyQt4/qimagereader.html#supportedImageFormats
         names = {'BMP':'Windows Bitmap', 'GIF':'Graphic Interchange Format', 'JPG':'Joint Photographic Experts Group', 'JPEG':'Joint Photographic Experts Group', 'MNG':'Multiple-image Network Graphics', 'PNG':'Portable Network Graphics', 'PBM':'Portable Bitmap', 'PGM':'Portable Graymap', 'PPM':'Portable Pixmap', 'TIFF':'Tagged Image File Format', 'XBM':'X11 Bitmap', 'XPM':'X11 Pixmap', 'SVG':'Scalable Vector Graphics', 'TGA':'Targa Image Format'}
@@ -3194,7 +3194,7 @@ class MyForm(QtGui.QMainWindow):
                         'view the full message in the quote.')
             # If we have received this message from either a broadcast address
             # or from someone in our address book, display as HTML
-            if decodeAddress(fromAddress)[3] in shared.broadcastSendersForWhichImWatching or shared.isAddressInMyAddressBook(fromAddress):
+            if decode_address(fromAddress)[3] in shared.broadcastSendersForWhichImWatching or shared.isAddressInMyAddressBook(fromAddress):
                 self.ui.textEditInboxMessage.setText(messageText)
             else:
                 self.ui.textEditInboxMessage.setPlainText(messageText)
@@ -3582,7 +3582,7 @@ class AddAddressDialog(QtGui.QDialog):
             "textChanged(QString)"), self.addressChanged)
 
     def addressChanged(self, QString):
-        status, a, b, c = decodeAddress(str(QString))
+        status, a, b, c = decode_address(str(QString))
         if status == 'missingbm':
             self.ui.labelAddressCheck.setText(_translate(
                 "MainWindow", "The address should start with ''BM-''"))
@@ -3620,7 +3620,7 @@ class NewSubscriptionDialog(QtGui.QDialog):
     def addressChanged(self, QString):
         self.ui.checkBoxDisplayMessagesAlreadyInInventory.setEnabled(False)
         self.ui.checkBoxDisplayMessagesAlreadyInInventory.setChecked(False)
-        status, addressVersion, streamNumber, ripe = decodeAddress(str(QString))
+        status, addressVersion, streamNumber, ripe = decode_address(str(QString))
         if status == 'missingbm':
             self.ui.labelAddressCheck.setText(_translate(
                 "MainWindow", "The address should start with ''BM-''"))
@@ -3647,8 +3647,8 @@ class NewSubscriptionDialog(QtGui.QDialog):
                     _translate("MainWindow", "Address is an old type. We cannot display its past broadcasts."))
             else:
                 shared.flushInventory()
-                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encodeVarint(
-                    addressVersion) + encodeVarint(streamNumber) + ripe).digest()).digest()
+                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encode_varint(
+                    addressVersion) + encode_varint(streamNumber) + ripe).digest()).digest()
                 tag = doubleHashOfAddressData[32:]
                 queryreturn = sqlQuery(
                     '''select hash from inventory where objecttype='broadcast' and tag=?''', tag)

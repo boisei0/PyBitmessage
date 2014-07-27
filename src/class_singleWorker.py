@@ -29,12 +29,12 @@ class singleWorker(threading.Thread):
             '''SELECT toripe, toaddress FROM sent WHERE ((status='awaitingpubkey' OR status='doingpubkeypow') AND folder='sent')''')
         for row in queryreturn:
             toripe, toaddress = row
-            toStatus, toAddressVersionNumber, toStreamNumber, toRipe = decodeAddress(toaddress)
+            toStatus, toAddressVersionNumber, toStreamNumber, toRipe = decode_address(toaddress)
             if toAddressVersionNumber <= 3 :
                 shared.neededPubkeys[toripe] = 0
             elif toAddressVersionNumber >= 4:
-                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encodeVarint(
-                    toAddressVersionNumber) + encodeVarint(toStreamNumber) + toRipe).digest()).digest()
+                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encode_varint(
+                    toAddressVersionNumber) + encode_varint(toStreamNumber) + toRipe).digest()).digest()
                 privEncryptionKey = doubleHashOfAddressData[:32] # Note that this is the first half of the sha512 hash.
                 tag = doubleHashOfAddressData[32:]
                 shared.neededPubkeys[tag] = highlevelcrypto.makeCryptor(privEncryptionKey.encode('hex')) # We'll need this for when we receive a pubkey reply: it will be encrypted and we'll need to decrypt it.
@@ -93,13 +93,13 @@ class singleWorker(threading.Thread):
                     myAddress = addressInKeysFile
                     break"""
         myAddress = shared.myAddressesByHash[hash]
-        status, addressVersionNumber, streamNumber, hash = decodeAddress(
+        status, addressVersionNumber, streamNumber, hash = decode_address(
             myAddress)
         embeddedTime = int(time.time() + random.randrange(
             -300, 300))  # the current time plus or minus five minutes
         payload = pack('>I', (embeddedTime))
-        payload += encodeVarint(addressVersionNumber)  # Address version number
-        payload += encodeVarint(streamNumber)
+        payload += encode_varint(addressVersionNumber)  # Address version number
+        payload += encode_varint(streamNumber)
         payload += '\x00\x00\x00\x01'  # bitfield of features supported by me (see the wiki).
 
         try:
@@ -135,7 +135,7 @@ class singleWorker(threading.Thread):
         print '(For pubkey message) Found proof of work', trialValue, 'Nonce:', nonce
         payload = pack('>Q', nonce) + payload
 
-        inventoryHash = calculateInventoryHash(payload)
+        inventoryHash = calculate_inventory_hash(payload)
         objectType = 'pubkey'
         shared.inventory[inventoryHash] = (
             objectType, streamNumber, payload, embeddedTime,'')
@@ -171,13 +171,13 @@ class singleWorker(threading.Thread):
             with shared.printLock:
                 print 'This is a chan address. Not sending pubkey.'
             return
-        status, addressVersionNumber, streamNumber, hash = decodeAddress(
+        status, addressVersionNumber, streamNumber, hash = decode_address(
             myAddress)
         embeddedTime = int(time.time() + random.randrange(
             -300, 300))  # the current time plus or minus five minutes
         payload = pack('>I', (embeddedTime))
-        payload += encodeVarint(addressVersionNumber)  # Address version number
-        payload += encodeVarint(streamNumber)
+        payload += encode_varint(addressVersionNumber)  # Address version number
+        payload += encode_varint(streamNumber)
         payload += '\x00\x00\x00\x01'  # bitfield of features supported by me (see the wiki).
 
         try:
@@ -204,12 +204,12 @@ class singleWorker(threading.Thread):
         payload += pubSigningKey[1:]
         payload += pubEncryptionKey[1:]
 
-        payload += encodeVarint(shared.config.getint(
+        payload += encode_varint(shared.config.getint(
             myAddress, 'noncetrialsperbyte'))
-        payload += encodeVarint(shared.config.getint(
+        payload += encode_varint(shared.config.getint(
             myAddress, 'payloadlengthextrabytes'))
         signature = highlevelcrypto.sign(payload, privSigningKeyHex)
-        payload += encodeVarint(len(signature))
+        payload += encode_varint(len(signature))
         payload += signature
 
         # Do the POW for this pubkey message
@@ -221,7 +221,7 @@ class singleWorker(threading.Thread):
         print '(For pubkey message) Found proof of work', trialValue, 'Nonce:', nonce
 
         payload = pack('>Q', nonce) + payload
-        inventoryHash = calculateInventoryHash(payload)
+        inventoryHash = calculate_inventory_hash(payload)
         objectType = 'pubkey'
         shared.inventory[inventoryHash] = (
             objectType, streamNumber, payload, embeddedTime,'')
@@ -253,13 +253,13 @@ class singleWorker(threading.Thread):
             with shared.printLock:
                 print 'This is a chan address. Not sending pubkey.'
             return
-        status, addressVersionNumber, streamNumber, hash = decodeAddress(
+        status, addressVersionNumber, streamNumber, hash = decode_address(
             myAddress)
         embeddedTime = int(time.time() + random.randrange(
             -300, 300))  # the current time plus or minus five minutes
         payload = pack('>Q', (embeddedTime))
-        payload += encodeVarint(addressVersionNumber)  # Address version number
-        payload += encodeVarint(streamNumber)
+        payload += encode_varint(addressVersionNumber)  # Address version number
+        payload += encode_varint(streamNumber)
 
         dataToEncrypt = '\x00\x00\x00\x01'  # bitfield of features supported by me (see the wiki).
 
@@ -285,13 +285,13 @@ class singleWorker(threading.Thread):
         dataToEncrypt += pubSigningKey[1:]
         dataToEncrypt += pubEncryptionKey[1:]
 
-        dataToEncrypt += encodeVarint(shared.config.getint(
+        dataToEncrypt += encode_varint(shared.config.getint(
             myAddress, 'noncetrialsperbyte'))
-        dataToEncrypt += encodeVarint(shared.config.getint(
+        dataToEncrypt += encode_varint(shared.config.getint(
             myAddress, 'payloadlengthextrabytes'))
 
         signature = highlevelcrypto.sign(payload + dataToEncrypt, privSigningKeyHex)
-        dataToEncrypt += encodeVarint(len(signature))
+        dataToEncrypt += encode_varint(len(signature))
         dataToEncrypt += signature
 
         # Let us encrypt the necessary data. We will use a hash of the data
@@ -300,8 +300,8 @@ class singleWorker(threading.Thread):
         # first. We'll also tag, unencrypted, the pubkey with part of the hash
         # so that nodes know which pubkey object to try to decrypt when they
         # want to send a message.
-        doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encodeVarint(
-            addressVersionNumber) + encodeVarint(streamNumber) + hash).digest()).digest()
+        doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encode_varint(
+            addressVersionNumber) + encode_varint(streamNumber) + hash).digest()).digest()
         payload += doubleHashOfAddressData[32:] # the tag
         privEncryptionKey = doubleHashOfAddressData[:32]
         pubEncryptionKey = highlevelcrypto.pointMult(privEncryptionKey)
@@ -317,7 +317,7 @@ class singleWorker(threading.Thread):
         print '(For pubkey message) Found proof of work', trialValue, 'Nonce:', nonce
 
         payload = pack('>Q', nonce) + payload
-        inventoryHash = calculateInventoryHash(payload)
+        inventoryHash = calculate_inventory_hash(payload)
         objectType = 'pubkey'
         shared.inventory[inventoryHash] = (
             objectType, streamNumber, payload, embeddedTime, doubleHashOfAddressData[32:])
@@ -342,7 +342,7 @@ class singleWorker(threading.Thread):
             '''SELECT fromaddress, subject, message, ackdata FROM sent WHERE status=? and folder='sent' ''', 'broadcastqueued')
         for row in queryreturn:
             fromaddress, subject, body, ackdata = row
-            status, addressVersionNumber, streamNumber, ripe = decodeAddress(
+            status, addressVersionNumber, streamNumber, ripe = decode_address(
                 fromaddress)
             if addressVersionNumber <= 1:
                 with shared.printLock:
@@ -374,44 +374,44 @@ class singleWorker(threading.Thread):
             payload = pack('>Q', (int(time.time()) + random.randrange(
                 -300, 300)))  # the current time plus or minus five minutes
             if addressVersionNumber <= 3:
-                payload += encodeVarint(2)  # broadcast version
+                payload += encode_varint(2)  # broadcast version
             else:
-                payload += encodeVarint(3)  # broadcast version
-            payload += encodeVarint(streamNumber)
+                payload += encode_varint(3)  # broadcast version
+            payload += encode_varint(streamNumber)
             if addressVersionNumber >= 4:
-                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encodeVarint(
-                    addressVersionNumber) + encodeVarint(streamNumber) + ripe).digest()).digest()
+                doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encode_varint(
+                    addressVersionNumber) + encode_varint(streamNumber) + ripe).digest()).digest()
                 tag = doubleHashOfAddressData[32:]
                 payload += tag
             else:
                 tag = ''
 
             if addressVersionNumber <= 3:
-                dataToEncrypt = encodeVarint(2)  # broadcast version
+                dataToEncrypt = encode_varint(2)  # broadcast version
             else:
-                dataToEncrypt = encodeVarint(3)  # broadcast version
-            dataToEncrypt += encodeVarint(addressVersionNumber)
-            dataToEncrypt += encodeVarint(streamNumber)
+                dataToEncrypt = encode_varint(3)  # broadcast version
+            dataToEncrypt += encode_varint(addressVersionNumber)
+            dataToEncrypt += encode_varint(streamNumber)
             dataToEncrypt += '\x00\x00\x00\x01'  # behavior bitfield
             dataToEncrypt += pubSigningKey[1:]
             dataToEncrypt += pubEncryptionKey[1:]
             if addressVersionNumber >= 3:
-                dataToEncrypt += encodeVarint(shared.config.getint(fromaddress,'noncetrialsperbyte'))
-                dataToEncrypt += encodeVarint(shared.config.getint(fromaddress,'payloadlengthextrabytes'))
+                dataToEncrypt += encode_varint(shared.config.getint(fromaddress,'noncetrialsperbyte'))
+                dataToEncrypt += encode_varint(shared.config.getint(fromaddress,'payloadlengthextrabytes'))
             dataToEncrypt += '\x02' # message encoding type
-            dataToEncrypt += encodeVarint(len('Subject:' + subject + '\n' + 'Body:' + body))  #Type 2 is simple UTF-8 message encoding per the documentation on the wiki.
+            dataToEncrypt += encode_varint(len('Subject:' + subject + '\n' + 'Body:' + body))  #Type 2 is simple UTF-8 message encoding per the documentation on the wiki.
             dataToEncrypt += 'Subject:' + subject + '\n' + 'Body:' + body
             signature = highlevelcrypto.sign(
                 dataToEncrypt, privSigningKeyHex)
-            dataToEncrypt += encodeVarint(len(signature))
+            dataToEncrypt += encode_varint(len(signature))
             dataToEncrypt += signature
 
             # Encrypt the broadcast with the information contained in the broadcaster's address. Anyone who knows the address can generate 
             # the private encryption key to decrypt the broadcast. This provides virtually no privacy; its purpose is to keep questionable 
             # and illegal content from flowing through the Internet connections and being stored on the disk of 3rd parties. 
             if addressVersionNumber <= 3:
-                privEncryptionKey = hashlib.sha512(encodeVarint(
-                    addressVersionNumber) + encodeVarint(streamNumber) + ripe).digest()[:32]
+                privEncryptionKey = hashlib.sha512(encode_varint(
+                    addressVersionNumber) + encode_varint(streamNumber) + ripe).digest()[:32]
             else:
                 privEncryptionKey = doubleHashOfAddressData[:32]
 
@@ -430,7 +430,7 @@ class singleWorker(threading.Thread):
 
             payload = pack('>Q', nonce) + payload
 
-            inventoryHash = calculateInventoryHash(payload)
+            inventoryHash = calculate_inventory_hash(payload)
             objectType = 'broadcast'
             shared.inventory[inventoryHash] = (
                 objectType, streamNumber, payload, int(time.time()),tag)
@@ -459,7 +459,7 @@ class singleWorker(threading.Thread):
             '''SELECT DISTINCT toaddress FROM sent WHERE (status='msgqueued' AND folder='sent')''')
         for row in queryreturn:  # For each address to which we need to send a message, check to see if we have its pubkey already.
             toaddress, = row
-            status, toAddressVersion, toStreamNumber, toRipe = decodeAddress(toaddress)
+            status, toAddressVersion, toStreamNumber, toRipe = decode_address(toaddress)
             # If we are sending a message to ourselves or a chan then we won't need an entry in the pubkeys table; we can calculate the needed pubkey using the private keys in our keys.dat file.
             if shared.config.has_section(toaddress):
                 sqlExecute(
@@ -476,7 +476,7 @@ class singleWorker(threading.Thread):
                 if toAddressVersion <= 3:
                     toTag = ''
                 else:
-                    toTag = hashlib.sha512(hashlib.sha512(encodeVarint(toAddressVersion)+encodeVarint(toStreamNumber)+toRipe).digest()).digest()[32:]
+                    toTag = hashlib.sha512(hashlib.sha512(encode_varint(toAddressVersion)+encode_varint(toStreamNumber)+toRipe).digest()).digest()[32:]
                 if toRipe in shared.neededPubkeys or toTag in shared.neededPubkeys:
                     # We already sent a request for the pubkey
                     sqlExecute(
@@ -531,9 +531,9 @@ class singleWorker(threading.Thread):
             int(time.time()) - 2419200)
         for row in queryreturn:  # For each message we need to send..
             toaddress, toripe, fromaddress, subject, message, ackdata, status = row
-            toStatus, toAddressVersionNumber, toStreamNumber, toHash = decodeAddress(
+            toStatus, toAddressVersionNumber, toStreamNumber, toHash = decode_address(
                 toaddress)
-            fromStatus, fromAddressVersionNumber, fromStreamNumber, fromHash = decodeAddress(
+            fromStatus, fromAddressVersionNumber, fromStreamNumber, fromHash = decode_address(
                 fromaddress)
 
             if not shared.config.has_section(toaddress):
@@ -606,7 +606,7 @@ class singleWorker(threading.Thread):
                 else:
                     readPosition += 4
                 readPosition += 1  # to bypass the address version whose length is definitely 1
-                streamNumber, streamNumberLength = decodeVarint(
+                streamNumber, streamNumberLength = decode_varint(
                     pubkeyPayload[readPosition:readPosition + 10])
                 readPosition += streamNumberLength
                 behaviorBitfield = pubkeyPayload[readPosition:readPosition + 4]
@@ -635,10 +635,10 @@ class singleWorker(threading.Thread):
                     shared.UISignalQueue.put(('updateSentItemStatusByAckdata', (
                         ackdata, tr.translateText("MainWindow", "Doing work necessary to send message.\nThere is no required difficulty for version 2 addresses like this."))))
                 elif toAddressVersionNumber >= 3:
-                    requiredAverageProofOfWorkNonceTrialsPerByte, varintLength = decodeVarint(
+                    requiredAverageProofOfWorkNonceTrialsPerByte, varintLength = decode_varint(
                         pubkeyPayload[readPosition:readPosition + 10])
                     readPosition += varintLength
-                    requiredPayloadLengthExtraBytes, varintLength = decodeVarint(
+                    requiredPayloadLengthExtraBytes, varintLength = decode_varint(
                         pubkeyPayload[readPosition:readPosition + 10])
                     readPosition += varintLength
                     if requiredAverageProofOfWorkNonceTrialsPerByte < shared.networkDefaultProofOfWorkNonceTrialsPerByte:  # We still have to meet a minimum POW difficulty regardless of what they say is allowed in order to get our message to propagate through the network.
@@ -684,8 +684,8 @@ class singleWorker(threading.Thread):
                 -300, 300)))  # the current time plus or minus five minutes.
             if fromAddressVersionNumber == 2:
                 payload = '\x01'  # Message version.
-                payload += encodeVarint(fromAddressVersionNumber)
-                payload += encodeVarint(fromStreamNumber)
+                payload += encode_varint(fromAddressVersionNumber)
+                payload += encode_varint(fromStreamNumber)
                 payload += '\x00\x00\x00\x01'  # Bitfield of features and behaviors that can be expected from me. (See https://bitmessage.org/wiki/Protocol_specification#Pubkey_bitfield_features  )
 
                 # We need to convert our private keys to public keys in order
@@ -718,20 +718,20 @@ class singleWorker(threading.Thread):
                 payload += '\x02'  # Type 2 is simple UTF-8 message encoding as specified on the Protocol Specification on the Bitmessage Wiki.
                 messageToTransmit = 'Subject:' + \
                     subject + '\n' + 'Body:' + message
-                payload += encodeVarint(len(messageToTransmit))
+                payload += encode_varint(len(messageToTransmit))
                 payload += messageToTransmit
                 fullAckPayload = self.generateFullAckMessage(
                     ackdata, toStreamNumber)  # The fullAckPayload is a normal msg protocol message with the proof of work already completed that the receiver of this message can easily send out.
-                payload += encodeVarint(len(fullAckPayload))
+                payload += encode_varint(len(fullAckPayload))
                 payload += fullAckPayload
                 signature = highlevelcrypto.sign(payload, privSigningKeyHex)
-                payload += encodeVarint(len(signature))
+                payload += encode_varint(len(signature))
                 payload += signature
 
             if fromAddressVersionNumber >= 3:
                 payload = '\x01'  # Message version.
-                payload += encodeVarint(fromAddressVersionNumber)
-                payload += encodeVarint(fromStreamNumber)
+                payload += encode_varint(fromAddressVersionNumber)
+                payload += encode_varint(fromStreamNumber)
                 payload += '\x00\x00\x00\x01'  # Bitfield of features and behaviors that can be expected from me. (See https://bitmessage.org/wiki/Protocol_specification#Pubkey_bitfield_features  )
 
                 # We need to convert our private keys to public keys in order
@@ -764,21 +764,21 @@ class singleWorker(threading.Thread):
                 # do the network-minimum proof of work. Let us check to see if
                 # the receiver is in any of those lists.
                 if shared.isAddressInMyAddressBookSubscriptionsListOrWhitelist(toaddress):
-                    payload += encodeVarint(
+                    payload += encode_varint(
                         shared.networkDefaultProofOfWorkNonceTrialsPerByte)
-                    payload += encodeVarint(
+                    payload += encode_varint(
                         shared.networkDefaultPayloadLengthExtraBytes)
                 else:
-                    payload += encodeVarint(shared.config.getint(
+                    payload += encode_varint(shared.config.getint(
                         fromaddress, 'noncetrialsperbyte'))
-                    payload += encodeVarint(shared.config.getint(
+                    payload += encode_varint(shared.config.getint(
                         fromaddress, 'payloadlengthextrabytes'))
 
                 payload += toHash  # This hash will be checked by the receiver of the message to verify that toHash belongs to them. This prevents a Surreptitious Forwarding Attack.
                 payload += '\x02'  # Type 2 is simple UTF-8 message encoding as specified on the Protocol Specification on the Bitmessage Wiki.
                 messageToTransmit = 'Subject:' + \
                     subject + '\n' + 'Body:' + message
-                payload += encodeVarint(len(messageToTransmit))
+                payload += encode_varint(len(messageToTransmit))
                 payload += messageToTransmit
                 if shared.config.has_section(toaddress):
                     with shared.printLock:
@@ -791,10 +791,10 @@ class singleWorker(threading.Thread):
                 else:
                     fullAckPayload = self.generateFullAckMessage(
                         ackdata, toStreamNumber)  # The fullAckPayload is a normal msg protocol message with the proof of work already completed that the receiver of this message can easily send out.
-                payload += encodeVarint(len(fullAckPayload))
+                payload += encode_varint(len(fullAckPayload))
                 payload += fullAckPayload
                 signature = highlevelcrypto.sign(payload, privSigningKeyHex)
-                payload += encodeVarint(len(signature))
+                payload += encode_varint(len(signature))
                 payload += signature
 
             print 'using pubEncryptionKey:', pubEncryptionKeyBase256.encode('hex')
@@ -805,7 +805,7 @@ class singleWorker(threading.Thread):
                 sqlExecute('''UPDATE sent SET status='badkey' WHERE ackdata=?''', ackdata)
                 shared.UISignalQueue.put(('updateSentItemStatusByAckdata',(ackdata,tr.translateText("MainWindow",'Problem: The recipient\'s encryption key is no good. Could not encrypt message. %1').arg(unicode(strftime(shared.config.get('bitmessagesettings', 'timeformat'),localtime(int(time.time()))),'utf-8')))))
                 continue
-            encryptedPayload = embeddedTime + encodeVarint(toStreamNumber) + encrypted
+            encryptedPayload = embeddedTime + encode_varint(toStreamNumber) + encrypted
             target = 2**64 / ((len(encryptedPayload)+requiredPayloadLengthExtraBytes+8) * requiredAverageProofOfWorkNonceTrialsPerByte)
             with shared.printLock:
                 print '(For msg message) Doing proof of work. Total required difficulty:', float(requiredAverageProofOfWorkNonceTrialsPerByte) / shared.networkDefaultProofOfWorkNonceTrialsPerByte, 'Required small message difficulty:', float(requiredPayloadLengthExtraBytes) / shared.networkDefaultPayloadLengthExtraBytes
@@ -822,7 +822,7 @@ class singleWorker(threading.Thread):
 
             encryptedPayload = pack('>Q', nonce) + encryptedPayload
 
-            inventoryHash = calculateInventoryHash(encryptedPayload)
+            inventoryHash = calculate_inventory_hash(encryptedPayload)
             objectType = 'msg'
             shared.inventory[inventoryHash] = (
                 objectType, toStreamNumber, encryptedPayload, int(time.time()),'')
@@ -870,7 +870,7 @@ class singleWorker(threading.Thread):
                         call([apiNotifyPath, "newMessage"])
 
     def requestPubKey(self, toAddress):
-        toStatus, addressVersionNumber, streamNumber, ripe = decodeAddress(
+        toStatus, addressVersionNumber, streamNumber, ripe = decode_address(
             toAddress)
         if toStatus != 'success':
             with shared.printLock:
@@ -881,13 +881,13 @@ class singleWorker(threading.Thread):
         if addressVersionNumber <= 3:
             shared.neededPubkeys[ripe] = 0
         elif addressVersionNumber >= 4:
-            privEncryptionKey = hashlib.sha512(hashlib.sha512(encodeVarint(addressVersionNumber)+encodeVarint(streamNumber)+ripe).digest()).digest()[:32] # Note that this is the first half of the sha512 hash.
-            tag = hashlib.sha512(hashlib.sha512(encodeVarint(addressVersionNumber)+encodeVarint(streamNumber)+ripe).digest()).digest()[32:] # Note that this is the second half of the sha512 hash.
+            privEncryptionKey = hashlib.sha512(hashlib.sha512(encode_varint(addressVersionNumber)+encode_varint(streamNumber)+ripe).digest()).digest()[:32] # Note that this is the first half of the sha512 hash.
+            tag = hashlib.sha512(hashlib.sha512(encode_varint(addressVersionNumber)+encode_varint(streamNumber)+ripe).digest()).digest()[32:] # Note that this is the second half of the sha512 hash.
             shared.neededPubkeys[tag] = highlevelcrypto.makeCryptor(privEncryptionKey.encode('hex')) # We'll need this for when we receive a pubkey reply: it will be encrypted and we'll need to decrypt it.
         payload = pack('>Q', (int(time.time()) + random.randrange(
             -300, 300)))  # the current time plus or minus five minutes.
-        payload += encodeVarint(addressVersionNumber)
-        payload += encodeVarint(streamNumber)
+        payload += encode_varint(addressVersionNumber)
+        payload += encode_varint(streamNumber)
         if addressVersionNumber <= 3:
             payload += ripe
             with shared.printLock:
@@ -911,7 +911,7 @@ class singleWorker(threading.Thread):
 
 
         payload = pack('>Q', nonce) + payload
-        inventoryHash = calculateInventoryHash(payload)
+        inventoryHash = calculate_inventory_hash(payload)
         objectType = 'getpubkey'
         shared.inventory[inventoryHash] = (
             objectType, streamNumber, payload, int(time.time()),'')
@@ -932,7 +932,7 @@ class singleWorker(threading.Thread):
     def generateFullAckMessage(self, ackdata, toStreamNumber):
         embeddedTime = pack('>Q', (int(time.time()) + random.randrange(
             -300, 300)))  # the current time plus or minus five minutes.
-        payload = embeddedTime + encodeVarint(toStreamNumber) + ackdata
+        payload = embeddedTime + encode_varint(toStreamNumber) + ackdata
         target = 2 ** 64 / ((len(payload) + shared.networkDefaultPayloadLengthExtraBytes +
                              8) * shared.networkDefaultProofOfWorkNonceTrialsPerByte)
         with shared.printLock:

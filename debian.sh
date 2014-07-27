@@ -7,10 +7,10 @@ RELEASE=1
 ARCH_TYPE=all
 DIR=${APP}-${VERSION}
 
-if [ $ARCH_TYPE == "x86_64" ]; then
+if [ ${ARCH_TYPE} == "x86_64" ]; then
     ARCH_TYPE="amd64"
 fi
-if [ $ARCH_TYPE == "i686" ]; then
+if [ ${ARCH_TYPE} == "i686" ]; then
     ARCH_TYPE="i386"
 fi
 

@@ -424,7 +424,7 @@ def handlech(c, stdscr):
                                                 addrs.append([str(i), item[2]])
                                             r, t = d.menu("Choose an existing address's stream", choices=addrs)
                                             if r == d.DIALOG_OK:
-                                                stream = decodeAddress(addrs[int(t)][1])[2]
+                                                stream = decode_address(addrs[int(t)][1])[2]
                                         shorten = False
                                         r, t = d.checklist("Miscellaneous options",
                                             choices=[("1", "Spend time shortening the address", shorten)])
@@ -546,7 +546,7 @@ def handlech(c, stdscr):
                         if t == "1":
                             r, t = d.inputbox("New subscription address")
                             if r == d.DIALOG_OK:
-                                addr = addBMIfNotPresent(t)
+                                addr = add_bm_if_not_present(t)
                                 if not shared.isAddressInMySubscriptionsList(addr):
                                     r, t = d.inputbox("New subscription label")
                                     if r == d.DIALOG_OK:
@@ -725,7 +725,7 @@ def sendMessage(sender="", recv="", broadcast=None, subject="", body="", reply=F
         list(set(recvlist)) # Remove exact duplicates
         for addr in recvlist:
             if addr != "":
-                status, version, stream, ripe = decodeAddress(addr)
+                status, version, stream, ripe = decode_address(addr)
                 if status != "success":
                     d.set_background_title("Recipient address error")
                     err = "Could not decode" + addr + " : " + status + "\n\n"
@@ -745,7 +745,7 @@ def sendMessage(sender="", recv="", broadcast=None, subject="", body="", reply=F
                         err += "It is unknown what is wrong with the address."
                     d.scrollbox(unicode(err), exit_label="Continue")
                 else:
-                    addr = addBMIfNotPresent(addr)
+                    addr = add_bm_if_not_present(addr)
                     if version > 4 or version <= 1:
                         d.set_background_title("Recipient address error")
                         d.scrollbox(unicode("Could not understand version number " + version + "of address" + addr + "."),

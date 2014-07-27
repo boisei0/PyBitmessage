@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+# coding=utf-8
 # Copyright (c) 2012 Jonathan Warren
 # Copyright (c) 2012 The Bitmessage developers
 # Distributed under the MIT/X11 software license. See the accompanying
@@ -52,36 +53,38 @@ if 'win' in sys.platform:
     if float("{1}.{2}".format(*sys.version_info)) < 7.5:
         msg = "You should use python 2.7.5 or greater. Your version: %s", "{0}.{1}.{2}".format(*sys.version_info)
         logger.critical(msg)
-        print msg
+        print(msg)
         sys.exit(0)
 
-def connectToStream(streamNumber):
-    shared.streamsInWhichIAmParticipating[streamNumber] = 'no data'
-    selfInitiatedConnections[streamNumber] = {}
-    shared.inventorySets[streamNumber] = set()
-    queryData = sqlQuery('''SELECT hash FROM inventory WHERE streamnumber=?''', streamNumber)
-    for row in queryData:
-        shared.inventorySets[streamNumber].add(row[0])
 
-    
+def connect_to_stream(stream_number):
+    shared.streamsInWhichIAmParticipating[stream_number] = 'no data'
+    self_initiated_connections[stream_number] = {}
+    shared.inventorySets[stream_number] = set()
+    query_data = sqlQuery('''SELECT hash FROM inventory WHERE streamnumber=?''', stream_number)
+    for row in query_data:
+        shared.inventorySets[stream_number].add(row[0])
+
     if isOurOperatingSystemLimitedToHavingVeryFewHalfOpenConnections():
         # Some XP and Vista systems can only have 10 outgoing connections at a time.
-        maximumNumberOfHalfOpenConnections = 9
+        maximum_number_of_half_open_connections = 9
     else:
-        maximumNumberOfHalfOpenConnections = 64
-    for i in range(maximumNumberOfHalfOpenConnections):
+        maximum_number_of_half_open_connections = 64
+    for i in range(maximum_number_of_half_open_connections):
         a = outgoingSynSender()
-        a.setup(streamNumber, selfInitiatedConnections)
+        a.setup(stream_number, self_initiated_connections)
         a.start()
 
-def _fixWinsock():
+
+def _fix_winsock():
     if not ('win32' in sys.platform) and not ('win64' in sys.platform):
         return
 
     # Python 2 on Windows doesn't define a wrapper for
     # socket.inet_ntop but we can make one ourselves using ctypes
     if not hasattr(socket, 'inet_ntop'):
-        addressToString = ctypes.windll.ws2_32.WSAAddressToStringA
+        address_to_string = ctypes.windll.ws2_32.WSAAddressToStringA
+
         def inet_ntop(family, host):
             if family == socket.AF_INET:
                 if len(host) != 4:
@@ -94,22 +97,20 @@ def _fixWinsock():
             else:
                 raise ValueError("invalid address family")
             buf = "\0" * 64
-            lengthBuf = pack("I", len(buf))
-            addressToString(host, len(host), None, buf, lengthBuf)
+            length_buf = pack("I", len(buf))
+            address_to_string(host, len(host), None, buf, length_buf)
             return buf[0:buf.index("\0")]
+
         socket.inet_ntop = inet_ntop
 
     # Same for inet_pton
     if not hasattr(socket, 'inet_pton'):
-        stringToAddress = ctypes.windll.ws2_32.WSAStringToAddressA
+        string_to_address = ctypes.windll.ws2_32.WSAStringToAddressA
+
         def inet_pton(family, host):
             buf = "\0" * 28
-            lengthBuf = pack("I", len(buf))
-            if stringToAddress(str(host),
-                               int(family),
-                               None,
-                               buf,
-                               lengthBuf) != 0:
+            length_buf = pack("I", len(buf))
+            if string_to_address(str(host), int(family), None, buf, length_buf) != 0:
                 raise socket.error("illegal IP address passed to inet_pton")
             if family == socket.AF_INET:
                 return buf[4:8]
@@ -117,6 +118,7 @@ def _fixWinsock():
                 return buf[8:24]
             else:
                 raise ValueError("invalid address family")
+
         socket.inet_pton = inet_pton
 
     # These sockopts are needed on for IPv6 support
@@ -125,20 +127,21 @@ def _fixWinsock():
     if not hasattr(socket, 'IPV6_V6ONLY'):
         socket.IPV6_V6ONLY = 27
 
-# This thread, of which there is only one, runs the API.
-class singleAPI(threading.Thread):
 
+# This thread, of which there is only one, runs the API.
+class SingleAPI(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
-        se = SimpleXMLRPCServer((shared.config.get('bitmessagesettings', 'apiinterface'), shared.config.getint(
-            'bitmessagesettings', 'apiport')), MySimpleXMLRPCRequestHandler, True, True)
+        se = SimpleXMLRPCServer((shared.config.get('bitmessagesettings', 'apiinterface'),
+                                 shared.config.getint('bitmessagesettings', 'apiport')),
+                                MySimpleXMLRPCRequestHandler, True, True)
         se.register_introspection_functions()
         se.serve_forever()
 
 # This is a list of current connections (the thread pointers at least)
-selfInitiatedConnections = {}
+self_initiated_connections = {}
 
 if shared.useVeryEasyProofOfWorkForTesting:
     shared.networkDefaultProofOfWorkNonceTrialsPerByte = int(
@@ -146,13 +149,18 @@ if shared.useVeryEasyProofOfWorkForTesting:
     shared.networkDefaultPayloadLengthExtraBytes = int(
         shared.networkDefaultPayloadLengthExtraBytes / 7000)
 
+
 class Main:
-    def start(self, daemon=False):
-        _fixWinsock()
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def start(daemon=False):
+        _fix_winsock()
 
         shared.daemon = daemon
         # is the application already running?  If yes then exit.
-        thisapp = singleton.singleinstance()
+        this_app = singleton.singleinstance()
 
         # get curses flag
         curses = False
@@ -164,69 +172,68 @@ class Main:
 
         helper_bootstrap.knownNodes()
         # Start the address generation thread
-        addressGeneratorThread = addressGenerator()
-        addressGeneratorThread.daemon = True  # close the main program even if there are threads left
-        addressGeneratorThread.start()
+        address_generator_thread = addressGenerator()
+        address_generator_thread.daemon = True  # close the main program even if there are threads left
+        address_generator_thread.start()
 
         # Start the thread that calculates POWs
-        singleWorkerThread = singleWorker()
-        singleWorkerThread.daemon = True  # close the main program even if there are threads left
-        singleWorkerThread.start()
+        single_worker_thread = singleWorker()
+        single_worker_thread.daemon = True  # close the main program even if there are threads left
+        single_worker_thread.start()
 
         # Start the SQL thread
-        sqlLookup = sqlThread()
-        sqlLookup.daemon = False  # DON'T close the main program even if there are threads left. The closeEvent should command this thread to exit gracefully.
-        sqlLookup.start()
+        sql_lookup = sqlThread()
+        sql_lookup.daemon = False  # DON'T close the main program even if there are threads left. The closeEvent should command this thread to exit gracefully.
+        sql_lookup.start()
 
         # Start the thread that calculates POWs
-        objectProcessorThread = objectProcessor()
-        objectProcessorThread.daemon = False  # DON'T close the main program even the thread remains. This thread checks the shutdown variable after processing each object.
-        objectProcessorThread.start()
+        object_processor_thread = objectProcessor()
+        object_processor_thread.daemon = False  # DON'T close the main program even the thread remains. This thread checks the shutdown variable after processing each object.
+        object_processor_thread.start()
 
         # Start the cleanerThread
-        singleCleanerThread = singleCleaner()
-        singleCleanerThread.daemon = True  # close the main program even if there are threads left
-        singleCleanerThread.start()
+        single_cleaner_thread = singleCleaner()
+        single_cleaner_thread.daemon = True  # close the main program even if there are threads left
+        single_cleaner_thread.start()
 
         shared.reloadMyAddressHashes()
         shared.reloadBroadcastSendersForWhichImWatching()
 
         if shared.safeConfigGetBoolean('bitmessagesettings', 'apienabled'):
             try:
-                apiNotifyPath = shared.config.get(
-                    'bitmessagesettings', 'apinotifypath')
+                api_notify_path = shared.config.get('bitmessagesettings', 'apinotifypath')
             except:
-                apiNotifyPath = ''
-            if apiNotifyPath != '':
+                api_notify_path = ''
+            if api_notify_path != '':
                 with shared.printLock:
-                    print 'Trying to call', apiNotifyPath
+                    print('Trying to call', api_notify_path)
 
-                call([apiNotifyPath, "startingUp"])
-            singleAPIThread = singleAPI()
-            singleAPIThread.daemon = True  # close the main program even if there are threads left
-            singleAPIThread.start()
+                call([api_notify_path, "startingUp"])
+            single_api_thread = SingleAPI()
+            single_api_thread.daemon = True  # close the main program even if there are threads left
+            single_api_thread.start()
 
-        connectToStream(1)
+        connect_to_stream(1)
 
-        singleListenerThread = singleListener()
-        singleListenerThread.setup(selfInitiatedConnections)
-        singleListenerThread.daemon = True  # close the main program even if there are threads left
-        singleListenerThread.start()
+        single_listener_thread = singleListener()
+        single_listener_thread.setup(self_initiated_connections)
+        single_listener_thread.daemon = True  # close the main program even if there are threads left
+        single_listener_thread.start()
 
-        if daemon == False and shared.safeConfigGetBoolean('bitmessagesettings', 'daemon') == False:
-            if curses == False:
+        if not daemon and not shared.safeConfigGetBoolean('bitmessagesettings', 'daemon'):
+            if not curses:
                 try:
                     from PyQt4 import QtCore, QtGui
                 except Exception as err:
-                    print 'PyBitmessage requires PyQt unless you want to run it as a daemon and interact with it using the API. You can download PyQt from http://www.riverbankcomputing.com/software/pyqt/download   or by searching Google for \'PyQt Download\'. If you want to run in daemon mode, see https://bitmessage.org/wiki/Daemon'
-                    print 'Error message:', err
-                    print 'You can also run PyBitmessage with the new curses interface by providing \'-c\' as a commandline argument.'
-                    os._exit(0)
+                    print('PyBitmessage requires PyQt unless you want to run it as a daemon and interact with it using the API. You can download PyQt from http://www.riverbankcomputing.com/software/pyqt/download   or by searching Google for \'PyQt Download\'. If you want to run in daemon mode, see https://bitmessage.org/wiki/Daemon')
+                    print('Error message:', err)
+                    print('You can also run PyBitmessage with the new curses interface by providing \'-c\' as a commandline argument.')
+                    os._exit(0)  # Boisei0: Why not sys.exit() ?
 
                 import bitmessageqt
                 bitmessageqt.run()
             else:
-                print 'Running with curses'
+                print('Running with curses')
                 import bitmessagecurses
                 bitmessagecurses.runwrapper()
         else:
@@ -234,30 +241,34 @@ class Main:
 
             if daemon:
                 with shared.printLock:
-                    print 'Running as a daemon. The main program should exit this thread.'
+                    print('Running as a daemon. The main program should exit this thread.')
             else:
                 with shared.printLock:
-                    print 'Running as a daemon. You can use Ctrl+C to exit.'
+                    print('Running as a daemon. You can use Ctrl+C to exit.')
                 while True:
                     time.sleep(20)
 
-    def stop(self):
+    @staticmethod
+    def stop():
         with shared.printLock:
-            print 'Stopping Bitmessage Deamon.'
+            print('Stopping Bitmessage Deamon.')
         shared.doCleanShutdown()
 
-
-    #TODO: nice function but no one is using this 
-    def getApiAddress(self):
+    #TODO: nice function but no one is using this
+    @staticmethod
+    def get_api_address():
         if not shared.safeConfigGetBoolean('bitmessagesettings', 'apienabled'):
             return None
         address = shared.config.get('bitmessagesettings', 'apiinterface')
         port = shared.config.getint('bitmessagesettings', 'apiport')
-        return {'address':address,'port':port}
+        return {
+            'address': address,
+            'port': port
+        }
 
 if __name__ == "__main__":
-    mainprogram = Main()
-    mainprogram.start()
+    main_program = Main()
+    main_program.start()
 
 
 # So far, the creation of and management of the Bitmessage protocol and this

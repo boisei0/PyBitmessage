@@ -153,11 +153,11 @@ def assembleVersionMessage(remoteHost, remotePort, myStreamNumber):
     random.seed()
     payload += eightBytesOfRandomDataUsedToDetectConnectionsToSelf
     userAgent = '/PyBitmessage:' + shared.softwareVersion + '/'
-    payload += encodeVarint(len(userAgent))
+    payload += encode_varint(len(userAgent))
     payload += userAgent
-    payload += encodeVarint(
+    payload += encode_varint(
         1)  # The number of streams about which I care. PyBitmessage currently only supports 1 per connection.
-    payload += encodeVarint(myStreamNumber)
+    payload += encode_varint(myStreamNumber)
 
     return CreatePacket('version', payload)
 
@@ -270,7 +270,7 @@ def reloadMyAddressHashes():
             isEnabled = config.getboolean(addressInKeysFile, 'enabled')
             if isEnabled:
                 hasEnabledKeys = True
-                status,addressVersionNumber,streamNumber,hash = decodeAddress(addressInKeysFile)
+                status,addressVersionNumber,streamNumber,hash = decode_address(addressInKeysFile)
                 if addressVersionNumber == 2 or addressVersionNumber == 3 or addressVersionNumber == 4:
                     # Returns a simple 32 bytes of information encoded in 64 Hex characters,
                     # or null if there was an error.
@@ -280,8 +280,8 @@ def reloadMyAddressHashes():
                     if len(privEncryptionKey) == 64:#It is 32 bytes encoded as 64 hex characters
                         myECCryptorObjects[hash] = highlevelcrypto.makeCryptor(privEncryptionKey)
                         myAddressesByHash[hash] = addressInKeysFile
-                        tag = hashlib.sha512(hashlib.sha512(encodeVarint(
-                            addressVersionNumber) + encodeVarint(streamNumber) + hash).digest()).digest()[32:]
+                        tag = hashlib.sha512(hashlib.sha512(encode_varint(
+                            addressVersionNumber) + encode_varint(streamNumber) + hash).digest()).digest()[32:]
                         myAddressesByTag[tag] = addressInKeysFile
 
                 else:
@@ -297,17 +297,17 @@ def reloadBroadcastSendersForWhichImWatching():
     logger.debug('reloading subscriptions...')
     for row in queryreturn:
         address, = row
-        status,addressVersionNumber,streamNumber,hash = decodeAddress(address)
+        status,addressVersionNumber,streamNumber,hash = decode_address(address)
         if addressVersionNumber == 2:
             broadcastSendersForWhichImWatching[hash] = 0
         #Now, for all addresses, even version 2 addresses, we should create Cryptor objects in a dictionary which we will use to attempt to decrypt encrypted broadcast messages.
         
         if addressVersionNumber <= 3:
-            privEncryptionKey = hashlib.sha512(encodeVarint(addressVersionNumber)+encodeVarint(streamNumber)+hash).digest()[:32]
+            privEncryptionKey = hashlib.sha512(encode_varint(addressVersionNumber)+encode_varint(streamNumber)+hash).digest()[:32]
             MyECSubscriptionCryptorObjects[hash] = highlevelcrypto.makeCryptor(privEncryptionKey.encode('hex'))
         else:
-            doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encodeVarint(
-                addressVersionNumber) + encodeVarint(streamNumber) + hash).digest()).digest()
+            doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encode_varint(
+                addressVersionNumber) + encode_varint(streamNumber) + hash).digest()).digest()
             tag = doubleHashOfAddressData[32:]
             privEncryptionKey = doubleHashOfAddressData[:32]
             MyECSubscriptionCryptorObjects[tag] = highlevelcrypto.makeCryptor(privEncryptionKey.encode('hex'))
@@ -454,18 +454,18 @@ def isBitSetWithinBitfield(fourByteString, n):
     return x & 2**n != 0
 
 def decryptAndCheckPubkeyPayload(payload, address):
-    status, addressVersion, streamNumber, ripe = decodeAddress(address)
-    doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encodeVarint(
-        addressVersion) + encodeVarint(streamNumber) + ripe).digest()).digest()
+    status, addressVersion, streamNumber, ripe = decode_address(address)
+    doubleHashOfAddressData = hashlib.sha512(hashlib.sha512(encode_varint(
+        addressVersion) + encode_varint(streamNumber) + ripe).digest()).digest()
     readPosition = 8 # bypass the nonce
     readPosition += 8 # bypass the time
-    embeddedVersionNumber, varintLength = decodeVarint(
+    embeddedVersionNumber, varintLength = decode_varint(
         payload[readPosition:readPosition + 10])
     if embeddedVersionNumber != addressVersion:
         logger.info('Pubkey decryption was UNsuccessful due to address version mismatch. This shouldn\'t have happened.')
         return 'failed'
     readPosition += varintLength
-    embeddedStreamNumber, varintLength = decodeVarint(
+    embeddedStreamNumber, varintLength = decode_varint(
         payload[readPosition:readPosition + 10])
     if embeddedStreamNumber != streamNumber:
         logger.info('Pubkey decryption was UNsuccessful due to stream number mismatch. This shouldn\'t have happened.')
@@ -494,14 +494,14 @@ def decryptAndCheckPubkeyPayload(payload, address):
     readPosition += 64
     publicEncryptionKey = '\x04' + decryptedData[readPosition:readPosition + 64]
     readPosition += 64
-    specifiedNonceTrialsPerByte, specifiedNonceTrialsPerByteLength = decodeVarint(
+    specifiedNonceTrialsPerByte, specifiedNonceTrialsPerByteLength = decode_varint(
         decryptedData[readPosition:readPosition + 10])
     readPosition += specifiedNonceTrialsPerByteLength
-    specifiedPayloadLengthExtraBytes, specifiedPayloadLengthExtraBytesLength = decodeVarint(
+    specifiedPayloadLengthExtraBytes, specifiedPayloadLengthExtraBytesLength = decode_varint(
         decryptedData[readPosition:readPosition + 10])
     readPosition += specifiedPayloadLengthExtraBytesLength
     signedData += decryptedData[:readPosition]
-    signatureLength, signatureLengthLength = decodeVarint(
+    signatureLength, signatureLengthLength = decode_varint(
         decryptedData[readPosition:readPosition + 10])
     readPosition += signatureLengthLength
     signature = decryptedData[readPosition:readPosition + signatureLength]
@@ -556,13 +556,13 @@ def checkAndShareMsgWithPeers(data):
     if embeddedTime < (int(time.time()) - maximumAgeOfAnObjectThatIAmWillingToAccept):
         logger.debug('The embedded time in this msg message is too old. Ignoring message.')
         return
-    streamNumberAsClaimedByMsg, streamNumberAsClaimedByMsgLength = decodeVarint(
+    streamNumberAsClaimedByMsg, streamNumberAsClaimedByMsgLength = decode_varint(
         data[readPosition:readPosition + 9])
     if not streamNumberAsClaimedByMsg in streamsInWhichIAmParticipating:
         logger.debug('The streamNumber %s isn\'t one we are interested in.' % streamNumberAsClaimedByMsg)
         return
     readPosition += streamNumberAsClaimedByMsgLength
-    inventoryHash = calculateInventoryHash(data)
+    inventoryHash = calculate_inventory_hash(data)
     shared.numberOfInventoryLookupsPerformed += 1
     inventoryLock.acquire()
     if inventoryHash in inventory:
@@ -614,10 +614,10 @@ def checkAndSharegetpubkeyWithPeers(data):
     if embeddedTime < int(time.time()) - maximumAgeOfAnObjectThatIAmWillingToAccept:
         logger.debug('The time in this getpubkey message is too old. Ignoring it. Time: %s' % embeddedTime)
         return
-    requestedAddressVersionNumber, addressVersionLength = decodeVarint(
+    requestedAddressVersionNumber, addressVersionLength = decode_varint(
         data[readPosition:readPosition + 10])
     readPosition += addressVersionLength
-    streamNumber, streamNumberLength = decodeVarint(
+    streamNumber, streamNumberLength = decode_varint(
         data[readPosition:readPosition + 10])
     if not streamNumber in streamsInWhichIAmParticipating:
         logger.debug('The streamNumber %s isn\'t one we are interested in.' % streamNumber)
@@ -625,7 +625,7 @@ def checkAndSharegetpubkeyWithPeers(data):
     readPosition += streamNumberLength
 
     shared.numberOfInventoryLookupsPerformed += 1
-    inventoryHash = calculateInventoryHash(data)
+    inventoryHash = calculate_inventory_hash(data)
     inventoryLock.acquire()
     if inventoryHash in inventory:
         logger.debug('We have already received this getpubkey request. Ignoring it.')
@@ -678,10 +678,10 @@ def checkAndSharePubkeyWithPeers(data):
     if embeddedTime > int(time.time()) + 10800:
         logger.debug('The embedded time in this pubkey message more than several hours in the future. This is irrational. Ignoring message.') 
         return
-    addressVersion, varintLength = decodeVarint(
+    addressVersion, varintLength = decode_varint(
         data[readPosition:readPosition + 10])
     readPosition += varintLength
-    streamNumber, varintLength = decodeVarint(
+    streamNumber, varintLength = decode_varint(
         data[readPosition:readPosition + 10])
     readPosition += varintLength
     if not streamNumber in streamsInWhichIAmParticipating:
@@ -694,7 +694,7 @@ def checkAndSharePubkeyWithPeers(data):
         tag = ''
 
     shared.numberOfInventoryLookupsPerformed += 1
-    inventoryHash = calculateInventoryHash(data)
+    inventoryHash = calculate_inventory_hash(data)
     inventoryLock.acquire()
     if inventoryHash in inventory:
         logger.debug('We have already received this pubkey. Ignoring it.')
@@ -748,11 +748,11 @@ def checkAndShareBroadcastWithPeers(data):
     if len(data) < 180:
         logger.debug('The payload length of this broadcast packet is unreasonably low. Someone is probably trying funny business. Ignoring message.')
         return
-    broadcastVersion, broadcastVersionLength = decodeVarint(
+    broadcastVersion, broadcastVersionLength = decode_varint(
         data[readPosition:readPosition + 10])
     readPosition += broadcastVersionLength
     if broadcastVersion >= 2:
-        streamNumber, streamNumberLength = decodeVarint(data[readPosition:readPosition + 10])
+        streamNumber, streamNumberLength = decode_varint(data[readPosition:readPosition + 10])
         readPosition += streamNumberLength
         if not streamNumber in streamsInWhichIAmParticipating:
             logger.debug('The streamNumber %s isn\'t one we are interested in.' % streamNumber)
@@ -763,7 +763,7 @@ def checkAndShareBroadcastWithPeers(data):
         tag = ''
     shared.numberOfInventoryLookupsPerformed += 1
     inventoryLock.acquire()
-    inventoryHash = calculateInventoryHash(data)
+    inventoryHash = calculate_inventory_hash(data)
     if inventoryHash in inventory:
         logger.debug('We have already received this broadcast object. Ignoring.')
         inventoryLock.release()
